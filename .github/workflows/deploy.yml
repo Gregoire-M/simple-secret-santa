@@ -19,15 +19,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-          token_format: 'access_token' 
-          access_token_scopes: 'https://www.googleapis.com/auth/cloud-platform'
-          
-      - name: 'Upload Artifact to GCS'
+          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          install_components: 'gsutil'
+
+      - name: 📤 Upload du fichier vers GCS
         run: |
-          echo "Uploading ${LOCAL_ARTIFACT_PATH} to gs://${GCS_BUCKET}/${GCS_DESTINATION_PATH}"
-          gsutil cp "${LOCAL_ARTIFACT_PATH}" "gs://${GCS_BUCKET}/${GCS_DESTINATION_PATH}"
+          LOCAL_FILE="${{ env.LOCAL_ARTIFACT_PATH }}" 
+          GCS_URI="gs://${{ env.GCS_BUCKET }}/${{ env.GCS_DESTINATION_PATH }}"
+          # gsutil est maintenant configuré pour utiliser les credentials
+          gsutil cp "${LOCAL_FILE}" "${GCS_URI}" 
           echo "Done."
