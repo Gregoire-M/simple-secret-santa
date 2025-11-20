@@ -30,7 +30,7 @@ jobs:
           export_environment_variables: true
 
       - name: Config gcloud and gsutil
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           install_components: 'gsutil'
 
