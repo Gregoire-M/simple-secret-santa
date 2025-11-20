@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Secret Santa</title>
+    <style>
+        footer {
+            margin-top: 3em;
+            padding-top: 1.5em;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
     <main>
@@ -57,6 +66,11 @@
             <div id="results" aria-live="polite" role="region" aria-atomic="true"></div>
         </section>
     </main>
+
+    <footer>
+        <p><a href="https://github.com/Gregoire-M/simple-secret-santa" target="_blank" rel="noopener noreferrer">Source code</a></p>
+        <p><a href="https://github.com/Gregoire-M/simple-secret-santa/issues" target="_blank" rel="noopener noreferrer">Report an issue</a></p>
+    </footer>
 
     <script>
         let participants = [];
@@ -175,8 +189,8 @@
                     const possibleReceivers = available.filter(receiver => {
                         if (receiver === giver) return false;
                         if (exclusions.find(e => e.giver === giver && e.receiver === receiver)) return false;
-                        if (assignment[receiver] === giver) return false;
-                        return true;
+                        return assignment[receiver] !== giver;
+
                     });
 
                     if (possibleReceivers.length === 0) {
