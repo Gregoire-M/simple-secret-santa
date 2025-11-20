@@ -18,12 +18,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
-        
+
       - id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-          token_format: 'access_token'
+          use_service_account_key: true
           
       - name: 'Upload Artifact to GCS'
         run: |
