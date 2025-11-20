@@ -1,0 +1,32 @@
+name: Deploy to GCP Storage
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GCS_BUCKET: simple-secret-santa.com
+  LOCAL_ARTIFACT_PATH: index.html
+  GCS_DESTINATION_PATH: index.html
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          token_format: 'access_token'
+          
+      - name: 'Upload Artifact to GCS'
+        run: |
+          echo "Uploading ${LOCAL_ARTIFACT_PATH} to gs://${GCS_BUCKET}/${GCS_DESTINATION_PATH}"
+          gsutil cp "${LOCAL_ARTIFACT_PATH}" "gs://${GCS_BUCKET}/${GCS_DESTINATION_PATH}"
+          echo "Done."
