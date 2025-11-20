@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Santa gift shuffler</title>
+</head>
+<body>
+    <main>
+        <h1>🎅 Secret Santa gift shuffler 🎁</h1>
+        
+        <p><strong>Organize your Secret Santa gift exchange with ease!</strong> Add participants, set exclusions (couples, siblings, etc.), and let the algorithm handle the rest. No mutual exchanges, everyone gives once and receives once.</p>
+        
+        <p><em>Yes, this is the actual design. We spent all our budget on the algorithm. Minimalism is a feature, not a bug.</em></p>
+        
+        <section aria-labelledby="add-participant-heading">
+            <h2 id="add-participant-heading">Add Participant</h2>
+            <form onsubmit="addParticipant(); return false;">
+                <label for="participantName">Participant name:</label>
+                <input type="text" id="participantName" name="participantName" placeholder="Enter name" required aria-required="true">
+                <button type="submit">Add</button>
+            </form>
+        </section>
+
+        <section aria-labelledby="participants-heading">
+            <h2 id="participants-heading">Participants</h2>
+            <ul id="participantList" aria-live="polite" aria-atomic="false"></ul>
+            <p id="participant-count" aria-live="polite" role="status">0 participants</p>
+        </section>
+
+        <section aria-labelledby="add-exclusion-heading">
+            <h2 id="add-exclusion-heading">Add Exclusion</h2>
+            <form onsubmit="addExclusion(); return false;">
+                <label for="giverSelect">Person 1:</label>
+                <select id="giverSelect" name="giverSelect" aria-required="true"></select>
+                <span>can't exchange with</span>
+                <label for="receiverSelect">Person 2:</label>
+                <select id="receiverSelect" name="receiverSelect" aria-required="true"></select>
+                <button type="submit">Add Exclusion</button>
+            </form>
+        </section>
+
+        <section aria-labelledby="exclusions-heading">
+            <h2 id="exclusions-heading">Exclusions</h2>
+            <ul id="exclusionList" aria-live="polite" aria-atomic="false"></ul>
+            <p id="exclusion-count" aria-live="polite" role="status">0 exclusions</p>
+        </section>
+
+        <section aria-labelledby="shuffle-heading">
+            <h2 id="shuffle-heading">Generate Assignments</h2>
+            <button onclick="shuffle()" aria-describedby="shuffle-description">Shuffle</button>
+            <p id="shuffle-description">Generate Secret Santa gift assignments based on participants and exclusions</p>
+        </section>
+
+        <section aria-labelledby="results-heading">
+            <h2 id="results-heading">Results</h2>
+            <div id="results" aria-live="polite" role="region" aria-atomic="true"></div>
+        </section>
+    </main>
+
+    <script>
+        let participants = [];
+        let exclusions = [];
+
+        function addParticipant() {
+            const input = document.getElementById('participantName');
+            const name = input.value.trim();
+            if (name && !participants.includes(name)) {
+                participants.push(name);
+                input.value = '';
+                updateUI();
+                input.focus();
+            }
+            return false;
+        }
+
+        function removeParticipant(name) {
+            participants = participants.filter(p => p !== name);
+            exclusions = exclusions.filter(e => e.giver !== name && e.receiver !== name);
+            updateUI();
+        }
+
+        function addExclusion() {
+            const giver = document.getElementById('giverSelect').value;
+            const receiver = document.getElementById('receiverSelect').value;
+            
+            if (giver && receiver && giver !== receiver) {
+                if (!exclusions.find(e => e.giver === giver && e.receiver === receiver)) {
+                    exclusions.push({ giver, receiver });
+                    exclusions.push({ giver: receiver, receiver: giver });
+                    updateUI();
+                }
+            }
+            return false;
+        }
+
+        function removeExclusion(giver, receiver) {
+            exclusions = exclusions.filter(e => 
+                !(e.giver === giver && e.receiver === receiver) &&
+                !(e.giver === receiver && e.receiver === giver)
+            );
+            updateUI();
+        }
+
+        function updateUI() {
+            const participantList = document.getElementById('participantList');
+            if (participants.length === 0) {
+                participantList.innerHTML = '<li>No participants yet</li>';
+            } else {
+                participantList.innerHTML = participants.map(p => 
+                    `<li>${p} <button onclick="removeParticipant('${p}')" aria-label="Remove ${p}">Remove</button></li>`
+                ).join('');
+            }
+
+            const participantCount = document.getElementById('participant-count');
+            participantCount.textContent = `${participants.length} participant${participants.length !== 1 ? 's' : ''}`;
+
+            const giverSelect = document.getElementById('giverSelect');
+            const receiverSelect = document.getElementById('receiverSelect');
+            const options = participants.map(p => `<option value="${p}">${p}</option>`).join('');
+            giverSelect.innerHTML = '<option value="">Select person 1...</option>' + options;
+            receiverSelect.innerHTML = '<option value="">Select person 2...</option>' + options;
+
+            const exclusionList = document.getElementById('exclusionList');
+            const uniqueExclusions = [];
+            const seen = new Set();
+            for (const e of exclusions) {
+                const key = [e.giver, e.receiver].sort().join('|');
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueExclusions.push(e);
+                }
+            }
+            if (uniqueExclusions.length === 0) {
+                exclusionList.innerHTML = '<li>No exclusions yet</li>';
+            } else {
+                exclusionList.innerHTML = uniqueExclusions.map(e => 
+                    `<li>${e.giver} ↔ ${e.receiver} <button onclick="removeExclusion('${e.giver}', '${e.receiver}')" aria-label="Remove exclusion between ${e.giver} and ${e.receiver}">Remove</button></li>`
+                ).join('');
+            }
+
+            const exclusionCount = document.getElementById('exclusion-count');
+            exclusionCount.textContent = `${uniqueExclusions.length} exclusion${uniqueExclusions.length !== 1 ? 's' : ''}`;
+        }
+
+        function shuffle() {
+            const resultsDiv = document.getElementById('results');
+            
+            if (participants.length < 2) {
+                resultsDiv.innerHTML = '<p role="alert">Need at least 2 participants to generate assignments.</p>';
+                return;
+            }
+
+            const result = findValidAssignment();
+            
+            if (result) {
+                resultsDiv.innerHTML = '<p>Assignments generated successfully!</p><ul>' + 
+                    Object.entries(result).map(([giver, receiver]) => 
+                        `<li><strong>${giver}</strong> gives to <strong>${receiver}</strong></li>`
+                    ).join('') + '</ul>';
+            } else {
+                resultsDiv.innerHTML = '<p role="alert">No valid assignment found! The exclusions may be too restrictive. Try removing some exclusions.</p>';
+            }
+        }
+
+        function findValidAssignment() {
+            const maxAttempts = 1000;
+            
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const assignment = {};
+                const available = [...participants];
+                let valid = true;
+
+                for (const giver of [...participants].sort(() => Math.random() - 0.5)) {
+                    const possibleReceivers = available.filter(receiver => {
+                        if (receiver === giver) return false;
+                        if (exclusions.find(e => e.giver === giver && e.receiver === receiver)) return false;
+                        if (assignment[receiver] === giver) return false;
+                        return true;
+                    });
+
+                    if (possibleReceivers.length === 0) {
+                        valid = false;
+                        break;
+                    }
+
+                    const receiver = possibleReceivers[Math.floor(Math.random() * possibleReceivers.length)];
+                    assignment[giver] = receiver;
+                    available.splice(available.indexOf(receiver), 1);
+                }
+
+                if (valid) {
+                    return assignment;
+                }
+            }
+
+            return null;
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
