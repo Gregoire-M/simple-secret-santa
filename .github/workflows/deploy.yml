@@ -19,34 +19,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         
-      - name: Authentification GCP
+      - name: GCP authentication
         id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-          # Explicite sur le format du jeton
           token_format: 'access_token' 
           access_token_scopes: 'https://www.googleapis.com/auth/cloud-platform'
-          # Ces options sont par défaut, mais les garder s'assure que l'étape suivante peut les lire
           create_credentials_file: true
           export_environment_variables: true
 
-      # 2. ⚙️ SETUP GCLOUD (Pour s'assurer que gsutil est prêt)
-      - name: Configuration de gcloud et gsutil
+      - name: Config gcloud and gsutil
         uses: google-github-actions/setup-gcloud@v2
         with:
-          # Vous n'avez pas besoin de project_id car il est souvent déduit 
-          # à partir des credentials générés par l'étape 'auth'.
-          # Nous nous assurons juste que gsutil est là.
           install_components: 'gsutil'
 
-      # 3. 📤 UPLOAD GCS
-      - name: Upload du fichier vers GCS
+      - name: Upload
         run: |
           LOCAL_FILE="${{ env.LOCAL_ARTIFACT_PATH }}" 
           GCS_URI="gs://${{ env.GCS_BUCKET }}/${{ env.GCS_DESTINATION_PATH }}"
 
-          echo "Début de l'upload de ${LOCAL_FILE} vers ${GCS_URI}"
-          # gsutil utilise désormais les credentials injectés dans l'environnement
+          echo "Uploading from ${LOCAL_FILE} to ${GCS_URI}"
           gsutil cp "${LOCAL_FILE}" "${GCS_URI}" 
-          echo "Fichier uploadé avec succès."
+          echo "Success."
